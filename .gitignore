@@ -1,0 +1,30 @@
+# Secrets — never commit these
+.env
+token.json
+tiktok_cookies.txt
+client_secrets.json
+
+# Generated output
+output/
+audio/
+images/
+clips/
+temp/
+__pycache__/
+*.pyc
+
+# Data files (managed on Railway volume)
+analytics.db
+voice_history.json
+run_history.json
+settings.json
+topics_queue.json
+voice_history.json
+
+# Fonts (auto-downloaded)
+fonts/
+
+# Test files
+test_*.py
+test_*.jpg
+*.pycode
