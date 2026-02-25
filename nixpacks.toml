@@ -1,6 +1,5 @@
 [phases.setup]
-nixPkgs = ["ffmpeg"]
-cmds = ["ln -sf $(which python3) /usr/local/bin/python 2>/dev/null || true"]
+aptPkgs = ["ffmpeg"]
 
 [phases.build]
 cmds = ["playwright install chromium --with-deps"]
