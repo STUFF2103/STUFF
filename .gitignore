@@ -28,3 +28,7 @@ fonts/
 test_*.py
 test_*.jpg
 *.pycode
+
+# Root-level binaries
+*.mp4
+*.mp3
