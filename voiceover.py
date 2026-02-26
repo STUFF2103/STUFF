@@ -200,7 +200,7 @@ def generate_voiceover(script_data, output_path=None):
         },
     }
 
-    # Try each key in order — rotate on quota_exceeded
+    # Try each key in order — rotate on any 401 (quota, unusual activity, etc.)
     keys_to_try = [api_key] + [k for k in ELEVENLABS_KEYS if k != api_key]
 
     for key_idx, current_key in enumerate(keys_to_try):
@@ -217,18 +217,18 @@ def generate_voiceover(script_data, output_path=None):
                     print(f"✅ Voiceover saved — {size_kb:.0f} KB  (key {key_idx + 1})")
                     return output_path
 
-                # Quota exceeded → try next key immediately
+                # Any 401 → rotate to next key (quota, unusual activity, blocked IP, etc.)
                 if response.status_code == 401:
                     try:
-                        detail = response.json().get("detail", {})
-                        if isinstance(detail, dict) and detail.get("status") == "quota_exceeded":
-                            print(f"   ⚠️  Key {key_idx + 1} quota exceeded — rotating...")
-                            break   # break inner loop → next key
+                        detail   = response.json().get("detail", {})
+                        status   = detail.get("status", "unknown") if isinstance(detail, dict) else "unknown"
+                        print(f"   ⚠️  Key {key_idx + 1} blocked ({status}) — rotating to next key...")
                     except Exception:
-                        pass
+                        print(f"   ⚠️  Key {key_idx + 1} returned 401 — rotating...")
+                    break  # break inner loop → try next key
 
-                print(f"❌ ElevenLabs error {response.status_code}: {response.text[:300]}")
-                return None
+                print(f"   ⚠️  Key {key_idx + 1} error {response.status_code} — rotating...")
+                break  # also rotate on other errors
 
             except requests.exceptions.ConnectionError as e:
                 wait = 5 * (attempt + 1)
@@ -238,8 +238,56 @@ def generate_voiceover(script_data, output_path=None):
                 print(f"❌ Voiceover exception: {e}")
                 return None
 
-    print("❌ All ElevenLabs keys exhausted or failed")
-    return None
+    # ── All ElevenLabs keys failed → fallback to OpenAI TTS ──
+    print("   ⚠️  All ElevenLabs keys failed — falling back to OpenAI TTS...")
+    return _openai_tts_fallback(script, voice_type, output_path)
+
+
+def _openai_tts_fallback(script, voice_type, output_path):
+    """OpenAI TTS fallback when all ElevenLabs keys are blocked."""
+    openai_key = os.getenv("OPENAI_API_KEY")
+    if not openai_key:
+        print("❌ No OpenAI API key — cannot fallback")
+        return None
+
+    # Map voice types to OpenAI voices
+    voice_map = {
+        "deep_male":      "onyx",
+        "whispery_male":  "fable",
+        "calm_female":    "nova",
+        "energetic_male": "echo",
+    }
+    oai_voice = voice_map.get(voice_type, "onyx")
+
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/audio/speech",
+            headers={
+                "Authorization": f"Bearer {openai_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "tts-1",
+                "input": script,
+                "voice": oai_voice,
+                "speed": 0.95,
+            },
+            timeout=120,
+        )
+
+        if response.status_code == 200:
+            with open(output_path, "wb") as f:
+                f.write(response.content)
+            size_kb = os.path.getsize(output_path) / 1024
+            print(f"✅ Voiceover saved via OpenAI TTS — {size_kb:.0f} KB  (voice: {oai_voice})")
+            return output_path
+
+        print(f"❌ OpenAI TTS error {response.status_code}: {response.text[:200]}")
+        return None
+
+    except Exception as e:
+        print(f"❌ OpenAI TTS exception: {e}")
+        return None
 
 
 # ============================================================
