@@ -19,9 +19,14 @@ import glob
 import shutil
 import random
 import subprocess
+import warnings
 import requests
+import urllib3
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Suppress SSL warnings from verify=False (ccMixter SSL cert issue on Windows)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -380,52 +385,147 @@ def build_tiktok_captions(word_timestamps, font_path=None, script_data=None, hig
 # ============================================================
 def _generate_hook_background(hook_text):
     """
-    Generates a dramatic cinematic 1080x1920 background image from the hook text.
-    Uses Pollinations.ai — completely free, no API key, works from any IP.
-    Returns a PIL Image or None on failure.
+    Generates the best possible 1080x1920 background for the hook card.
+
+    Tier 1: Wikipedia API — real public-domain photo if hook names a real person/place.
+    Tier 2: Leonardo AI  — ultra-detailed cinematic AI art (uses tokens, ~30s).
+    Tier 3: Picsum Photos — beautiful random real photo, instantly available.
+    Tier 4: PIL gradient  — zero network, always works.
+
+    All tiers apply a dark overlay so the hook text stays readable.
+    Returns a PIL Image.
     """
-    import urllib.parse, urllib.request, io
+    import io, time as _time
     try:
-        from PIL import Image, ImageDraw, ImageFilter
+        from PIL import Image, ImageFilter, ImageEnhance
     except ImportError:
         return None
 
-    # Build a cinematic prompt from the hook text
-    prompt = (
-        f"ultra dramatic cinematic scene inspired by: {hook_text}. "
-        "dark atmospheric, moody lighting, deep shadows, film noir style, "
-        "high contrast, vertical portrait 9:16, photorealistic, 4K, "
-        "no text, no words, no letters, pure visual storytelling"
-    )
-
-    try:
-        import requests as _req
-        encoded = urllib.parse.quote(prompt)
-        url = (
-            f"https://image.pollinations.ai/prompt/{encoded}"
-            f"?width=1080&height=1920&nologo=true&model=flux&enhance=true"
-        )
-        print(f"  🎨 Generating hook background via Pollinations.ai...")
-        r = _req.get(url, timeout=45, headers={"User-Agent": "Mozilla/5.0"})
-        r.raise_for_status()
-        img_data = r.content
-
-        img = Image.open(io.BytesIO(img_data)).convert("RGB")
+    def _darken(img, overlay_alpha=0.55, blur=1.0, desaturate=0.3):
+        """Apply dark cinematic treatment: desaturate → overlay → blur."""
         img = img.resize((1080, 1920), Image.LANCZOS)
-
-        # Dark overlay so text stays readable (semi-transparent black layer)
+        if desaturate < 1.0:
+            img = ImageEnhance.Color(img).enhance(desaturate)
         overlay = Image.new("RGB", (1080, 1920), (0, 0, 0))
-        img = Image.blend(img, overlay, alpha=0.55)
-
-        # Slight blur for cinematic depth-of-field feel
-        img = img.filter(ImageFilter.GaussianBlur(radius=1.2))
-
-        print(f"  ✅ Hook background generated")
+        img = Image.blend(img, overlay, alpha=overlay_alpha)
+        if blur > 0:
+            img = img.filter(ImageFilter.GaussianBlur(radius=blur))
         return img
 
+    # ── Tier 1: Wikipedia real photo — instant, public domain ────────────
+    try:
+        # Search Wikipedia for the hook topic and get the main page image
+        search_resp = requests.get(
+            "https://en.wikipedia.org/w/api.php",
+            params={
+                "action":      "query",
+                "generator":   "search",
+                "gsrsearch":   hook_text,
+                "gsrlimit":    1,
+                "prop":        "pageimages",
+                "piprop":      "original",
+                "format":      "json",
+                "redirects":   1,
+            },
+            timeout=10,
+            headers={"User-Agent": "DarkMindBot/1.0"},
+        )
+        if search_resp.status_code == 200:
+            pages = search_resp.json().get("query", {}).get("pages", {})
+            for page in pages.values():
+                img_url = page.get("original", {}).get("source", "")
+                if img_url and any(img_url.lower().endswith(ext)
+                                   for ext in (".jpg", ".jpeg", ".png", ".webp")):
+                    img_resp = requests.get(img_url, timeout=20,
+                                            headers={"User-Agent": "DarkMindBot/1.0"})
+                    if img_resp.status_code == 200 and len(img_resp.content) > 10_000:
+                        img = Image.open(io.BytesIO(img_resp.content)).convert("RGB")
+                        img = _darken(img, overlay_alpha=0.60, blur=1.2, desaturate=0.35)
+                        print("  Hook background: Wikipedia real photo")
+                        return img
     except Exception as e:
-        print(f"  ⚠️  Hook background failed ({e}) — using black")
-        return None
+        print(f"  Wikipedia hook: {e.__class__.__name__}")
+
+    # ── Tier 2: Leonardo AI — ultra-detailed cinematic art ───────────────
+    _leo_keys = [k for k in [
+        os.getenv("LEONARDO_API_KEY_1"),
+        os.getenv("LEONARDO_API_KEY_2"),
+        os.getenv("LEONARDO_API_KEY_3"),
+    ] if k]
+
+    for key in _leo_keys:
+        try:
+            chk    = requests.get("https://cloud.leonardo.ai/api/rest/v1/me",
+                                  headers={"Authorization": f"Bearer {key}"}, timeout=10)
+            tokens = chk.json().get("user_details",[{}])[0].get("subscriptionTokens",0) if chk.status_code==200 else 0
+            if tokens < 5:
+                continue
+
+            prompt = (
+                f"ultra dramatic cinematic scene: {hook_text}. "
+                "extreme close-up, face half-submerged in deep shadow, "
+                "single cold harsh light from below casting upward shadows, "
+                "hollow eyes filled with dread, film noir chiaroscuro, "
+                "dark atmospheric, fog wisps, deep blacks, photorealistic, "
+                "8K, vertical 9:16, anamorphic lens flare, subtle film grain, "
+                "shallow depth of field, no text, no words, no watermarks"
+            )
+            resp = requests.post(
+                "https://cloud.leonardo.ai/api/rest/v1/generations",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={"prompt": prompt,
+                      "negative_prompt": "bright colors, cheerful, cartoon, text, watermark, blurry",
+                      "width": 576, "height": 1024, "num_images": 1,
+                      "guidance_scale": 8, "num_inference_steps": 20},
+                timeout=30,
+            )
+            if resp.status_code != 200:
+                continue
+            gen_id = resp.json().get("sdGenerationJob", {}).get("generationId")
+            if not gen_id:
+                continue
+
+            print(f"  Hook background: Leonardo AI generating ({tokens} tokens)...")
+            for _ in range(12):
+                _time.sleep(5)
+                poll = requests.get(
+                    f"https://cloud.leonardo.ai/api/rest/v1/generations/{gen_id}",
+                    headers={"Authorization": f"Bearer {key}"}, timeout=20)
+                if poll.status_code == 200:
+                    imgs = poll.json().get("generations_by_pk", {}).get("generated_images", [])
+                    if imgs:
+                        img_resp = requests.get(imgs[0]["url"], timeout=30)
+                        if img_resp.status_code == 200:
+                            img = Image.open(io.BytesIO(img_resp.content)).convert("RGB")
+                            img = _darken(img, overlay_alpha=0.45, blur=0.8, desaturate=0.8)
+                            print("  Hook background: Leonardo AI ready")
+                            return img
+        except Exception as e:
+            print(f"  Leonardo hook error: {e.__class__.__name__}")
+            continue
+
+    # ── Tier 3: Picsum Photos — beautiful real photo, always available ────
+    try:
+        seed = sum(ord(c) for c in hook_text) % 1000
+        r    = requests.get(f"https://picsum.photos/seed/{seed}/1080/1920",
+                            timeout=20, headers={"User-Agent": "Mozilla/5.0"},
+                            allow_redirects=True)
+        r.raise_for_status()
+        img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        img = _darken(img, overlay_alpha=0.65, blur=1.5, desaturate=0.25)
+        print("  Hook background: Picsum photo")
+        return img
+    except Exception as e:
+        print(f"  Picsum failed ({e.__class__.__name__})")
+
+    # ── Tier 4: PIL gradient — zero network, always works ────────────────
+    img    = Image.new("RGB", (1080, 1920))
+    px     = img.load()
+    for y in range(1920):
+        t = y / 1920
+        for x in range(1080):
+            px[x, y] = (int(5 + 10*(1-t)), int(5 + 15*(1-t)), int(20 + 25*(1-t)))
+    return img
 
 
 # ============================================================
@@ -572,38 +672,50 @@ def fetch_music_track(mood, output_path="temp/music.mp3"):
             pass
         return False
 
-    # ── Tier 1: Jamendo (CC-BY / CC0 only — safe for YouTube monetization) ───
-    # license_cc=ccby  → Attribution licence (commercially usable, no Content ID block)
-    # license_cc=cc0   → Public domain
-    # Do NOT use ccbync — NonCommercial blocks YouTube monetization
-    tags = JAMENDO_TAGS.get(mood, "dark cinematic")
-    for cc_license in ("cc0", "ccby"):
-        try:
-            resp = requests.get(
-                "https://api.jamendo.com/v3.0/tracks/",
-                params={
-                    "client_id":    "b6747d04",
-                    "format":       "json",
-                    "limit":        20,
-                    "tags":         tags,
-                    "audioformat":  "mp31",
-                    "include":      "musicinfo",
-                    "groupby":      "artist_id",
-                    "license_cc":   cc_license,
-                },
-                timeout=15,
-            )
-            if resp.status_code == 200:
-                tracks = resp.json().get("results", [])
-                random.shuffle(tracks)
-                for track in tracks:
-                    audio_url = track.get("audio", "")
-                    if not audio_url or audio_url in _used_music_urls:
+    # ── Tier 1: ccMixter (CC-BY — safe for YouTube/TikTok) ──────────────────
+    CCMIXTER_TAGS = {
+        "cinematic":    "cinematic",
+        "tense":        "dark",
+        "dark_ambient": "ambient",
+        "phonk":        "hip+hop",
+        "lofi":         "chill",
+    }
+    ccm_tag = CCMIXTER_TAGS.get(mood, "dark")
+    try:
+        resp = requests.get(
+            "http://ccmixter.org/api/query",
+            params={"tags": ccm_tag, "limit": 20, "format": "json", "type": "track"},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            tracks = resp.json()
+            random.shuffle(tracks)
+            for track in tracks:
+                for f in track.get("files", []):
+                    # Use the download_url field directly — most reliable
+                    audio_url = f.get("download_url", "")
+                    if not audio_url or not audio_url.endswith(".mp3"):
                         continue
-                    if _download(audio_url, f"Jamendo/{cc_license}/{track.get('name','')[:25]}"):
-                        return output_path
-        except Exception as e:
-            print(f"   ⚠️  Jamendo music error ({cc_license}): {e}")
+                    if audio_url in _used_music_urls:
+                        continue
+                    label = f"ccMixter/{track.get('upload_name','')[:25]}"
+                    # verify=False needed for ccMixter SSL cert on Windows Python 3.14
+                    try:
+                        r = requests.get(audio_url, headers=headers, timeout=35,
+                                         stream=True, verify=False)
+                        if r.status_code == 200:
+                            content = b"".join(r.iter_content(65536))
+                            if len(content) > 30_000:
+                                with open(output_path, "wb") as f_out:
+                                    f_out.write(content)
+                                if _is_valid_audio(output_path):
+                                    _used_music_urls.add(audio_url)
+                                    print(f"✅ Music {label}: {len(content)//1024}KB")
+                                    return output_path
+                    except Exception:
+                        continue
+    except Exception as e:
+        print(f"   ⚠️  ccMixter music error: {e}")
 
     # ── Tier 2: Archive.org (CC music, stable) ───────────────
     ARCHIVE_QUERIES = {
