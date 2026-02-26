@@ -9,6 +9,16 @@ mkdir -p "$DATA_DIR"
 
 echo "🔗 Linking persistent files from $DATA_DIR ..."
 
+# Reconstruct auth files from env vars if not already on volume
+if [ -n "$YOUTUBE_TOKEN_JSON" ] && [ ! -f "$DATA_DIR/token.json" ]; then
+    echo "$YOUTUBE_TOKEN_JSON" | base64 -d > "$DATA_DIR/token.json"
+    echo "  Wrote token.json from env var"
+fi
+if [ -n "$TIKTOK_COOKIES" ] && [ ! -f "$DATA_DIR/tiktok_cookies.txt" ]; then
+    echo "$TIKTOK_COOKIES" | base64 -d > "$DATA_DIR/tiktok_cookies.txt"
+    echo "  Wrote tiktok_cookies.txt from env var"
+fi
+
 # Single files: copy to volume on first deploy, then symlink every time
 for f in token.json tiktok_cookies.txt analytics.db voice_history.json client_secrets.json settings.json; do
     SRC="/app/$f"

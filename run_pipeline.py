@@ -22,8 +22,10 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
 BASE_DIR = Path(__file__).parent
 
 # ── PUBLISH TOGGLE ────────────────────────────────────────────
-# Set to False to produce the video locally without uploading
-PUBLISH = True
+# Controlled via PUBLISH env var (set in Railway dashboard)
+# PUBLISH=true  → upload to YouTube + TikTok after each run
+# PUBLISH=false → make video only, no upload (local testing)
+PUBLISH = os.getenv("PUBLISH", "true").lower() == "true"
 # ─────────────────────────────────────────────────────────────
 
 # Stop-words ignored when comparing topic similarity
