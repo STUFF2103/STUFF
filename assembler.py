@@ -399,15 +399,16 @@ def _generate_hook_background(hook_text):
     )
 
     try:
+        import requests as _req
         encoded = urllib.parse.quote(prompt)
         url = (
             f"https://image.pollinations.ai/prompt/{encoded}"
             f"?width=1080&height=1920&nologo=true&model=flux&enhance=true"
         )
         print(f"  🎨 Generating hook background via Pollinations.ai...")
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            img_data = resp.read()
+        r = _req.get(url, timeout=45, headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        img_data = r.content
 
         img = Image.open(io.BytesIO(img_data)).convert("RGB")
         img = img.resize((1080, 1920), Image.LANCZOS)
@@ -500,15 +501,18 @@ def make_hook_clip(hook_text, duration=1.8, output_dir=None):
         print(f"⚠️  Hook card Pillow error: {e}")
         return None
 
-    # Convert PNG to video
+    # Convert PNG to video — use -framerate + -frames:v for Linux ffmpeg compatibility
+    frames = max(1, int(duration * 30))
     success = run_ffmpeg(
         [
             "ffmpeg", "-y",
+            "-framerate", "30",
             "-loop", "1", "-i", png_path,
             "-c:v", "libx264",
-            "-t", str(duration),
+            "-frames:v", str(frames),
             "-r", "30",
             "-pix_fmt", "yuv420p",
+            "-vf", "scale=1080:1920:force_original_aspect_ratio=disable",
             "-an",
             mp4_path,
         ],
