@@ -264,14 +264,18 @@ def get_schedule():
             if h not in seen:
                 seen.add(h)
                 combined.append(h)
-        chosen = sorted(h for h in combined if 6 <= h < 23)[:max_vids]
+        chosen_hours = sorted(h for h in combined if 6 <= h < 23)[:max_vids]
+
+        # Match scheduler jitter: show hours only (actual minute is randomized at runtime)
+        import random as _random
+        chosen = [(h, _random.randint(5, 55)) for h in chosen_hours]
 
         from datetime import datetime as _dt
         today_name = _dt.now().strftime("%A")
 
         return jsonify({
             "today":           today_name,
-            "schedule":        [f"{h:02d}:00" for h in chosen],
+            "schedule":        [f"{h:02d}:{m:02d}" for h, m in chosen],
             "learned_hours":   [f"{h:02d}:00" for h in learned],
             "psych_hours":     [f"{h:02d}:00" for h in sorted(set(psych))[:6]],
             "tier":            conf.get("tier", "psychology"),

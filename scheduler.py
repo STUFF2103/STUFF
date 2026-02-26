@@ -117,12 +117,12 @@ def build_daily_schedule():
       1. Learned hours from analytics DB (engagement-ranked, day-of-week specific)
       2. Psychology-backed peak hours as fallback / filler slots
 
-    The AI learns which real-world hours actually drive views for THIS channel,
-    gradually replacing defaults as data accumulates.
-    Returns a sorted list of target hours (integers).
+    Each slot gets a random minute offset (5-55 min) so posts never land on
+    the exact hour — looks natural, varies every day.
+    Returns a sorted list of (hour, minute) tuples.
     """
-    now     = datetime.now()
-    weekday = now.weekday()
+    now      = datetime.now()
+    weekday  = now.weekday()
     max_vids = get_max_videos_per_day()
 
     # Step 1: ask analytics for learned hours for today's weekday
@@ -149,11 +149,15 @@ def build_daily_schedule():
 
     # Step 4: keep only active-window hours, take up to max_vids (earliest first)
     active = sorted(h for h in combined if ACTIVE_HOURS_START <= h < ACTIVE_HOURS_END)
-    chosen = active[:max_vids]
+    chosen_hours = active[:max_vids]
+
+    # Step 5: add random jitter — each slot fires at a random minute (5-55)
+    # so it never looks like a bot posting at exactly :00 every day
+    chosen = [(h, random.randint(5, 55)) for h in chosen_hours]
 
     day_name = now.strftime("%A")
-    slots    = [f"{h:02d}:00" for h in chosen]
-    learned_slots = [f"{h:02d}:00" for h in learned]
+    slots    = [f"{h:02d}:{m:02d}" for h, m in chosen]
+    learned_slots = [f"{h:02d}:xx" for h in learned]
 
     print(f"\n  📅 {day_name}'s posting schedule : {slots}")
     if tier == "day-specific":
@@ -191,12 +195,19 @@ def should_run_now():
     if count >= max_vids:
         return False, f"Daily cap reached ({count}/{max_vids})"
 
-    # Check against today's adaptive schedule
+    # Check against today's jittered schedule (list of (hour, minute) tuples)
     schedule = get_today_schedule()
-    if now.hour not in schedule:
-        future  = [h for h in schedule if h > now.hour]
-        nxt     = f"{future[0]:02d}:00" if future else "none remaining today"
+    schedule_hours = [h for h, m in schedule]
+
+    if now.hour not in schedule_hours:
+        future = [(h, m) for h, m in schedule if h > now.hour]
+        nxt    = f"{future[0][0]:02d}:{future[0][1]:02d}" if future else "none remaining today"
         return False, f"Not a scheduled slot — next: {nxt}"
+
+    # We're in a scheduled hour — check if we've hit or passed the target minute
+    target_minute = next(m for h, m in schedule if h == now.hour)
+    if now.minute < target_minute:
+        return False, f"Waiting for :{target_minute:02d} (now :{now.minute:02d})"
 
     return True, "OK"
 
@@ -275,8 +286,8 @@ def run_once(force=False):
     print(f"\n{sep}")
     print(f"  🤖 AUTO-RUN — {now.strftime('%A %Y-%m-%d %H:%M')}")
     schedule = get_today_schedule()
-    schedule_str = ", ".join(f"{h:02d}:00" for h in schedule) or "none"
-    in_slot = datetime.now().hour in schedule
+    schedule_str = ", ".join(f"{h:02d}:{m:02d}" for h, m in schedule) or "none"
+    in_slot = datetime.now().hour in [h for h, m in schedule]
     print(f"  Scheduled   : {schedule_str}  {'← NOW 🔥' if in_slot else ''}")
     print(f"  Daily count : {get_daily_count()}/{get_max_videos_per_day()}")
     print(f"{sep}")
@@ -384,7 +395,7 @@ def start_scheduler():
     schedule.every(CHECK_INTERVAL_MIN).minutes.do(run_once)
 
     # If current hour is already a scheduled slot → run immediately
-    if is_active_hour() and now.hour in todays_schedule:
+    if is_active_hour() and now.hour in [h for h, m in todays_schedule]:
         ok, reason = should_run_now()
         if ok:
             print(f"🔥 Current hour ({now.strftime('%H:%M')}) is a scheduled slot — starting now!")
