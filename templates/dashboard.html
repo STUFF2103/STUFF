@@ -3,23 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard — lastsecondsbc</title>
+  <title>Dashboard — Dark Mind</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0d0d0d;
-      --surface: #1a1a1a;
-      --border: #2a2a2a;
-      --text: #e0e0e0;
-      --muted: #666;
-      --accent: #ff4d6d;
+      --bg:         #0d0d0d;
+      --surface:    #1a1a1a;
+      --surface2:   #222;
+      --border:     #2a2a2a;
+      --text:       #e0e0e0;
+      --muted:      #666;
+      --accent:     #ff4d6d;
       --accent-dim: rgba(255,77,109,0.15);
-      --green: #4caf50;
-      --yellow: #ffc107;
-      --red: #f44336;
-      --blue: #2196f3;
-      --mono: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      --green:      #4caf50;
+      --yellow:     #ffc107;
+      --red:        #f44336;
+      --blue:       #2196f3;
+      --mono:       'Cascadia Code','Consolas','Courier New',monospace;
+      --radius:     10px;
     }
 
     body {
@@ -29,26 +31,30 @@
       color: var(--text);
       display: flex;
       flex-direction: column;
+      font-size: 16px;
     }
 
-    /* ---- Header ---- */
+    /* ── Header ── */
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.9rem 1.5rem;
+      padding: 0.85rem 1.25rem;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     header h1 {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 700;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
     }
 
     header h1 span { color: var(--accent); }
+    header h1 small { color: #444; font-weight: 400; font-size: 0.75rem; }
 
     .logout-btn {
       background: transparent;
@@ -56,129 +62,150 @@
       border-radius: 6px;
       color: var(--muted);
       font-size: 0.8rem;
-      padding: 0.35rem 0.8rem;
+      padding: 0.4rem 0.85rem;
       cursor: pointer;
       transition: color 0.2s, border-color 0.2s;
+      min-height: 36px;
     }
-
     .logout-btn:hover { color: var(--text); border-color: #555; }
 
-    /* ---- Main layout ---- */
+    /* ── Layout ── */
     main {
       flex: 1;
-      padding: 1.5rem;
+      padding: 1rem;
       display: grid;
-      grid-template-columns: 340px 1fr;
-      grid-template-rows: auto 1fr;
-      gap: 1rem;
+      gap: 0.85rem;
+      grid-template-columns: 1fr;
       max-width: 1400px;
       width: 100%;
       margin: 0 auto;
     }
 
-    /* ---- Cards ---- */
+    @media (min-width: 900px) {
+      main {
+        padding: 1.25rem;
+        grid-template-columns: 320px 1fr;
+        grid-template-rows: auto 1fr;
+      }
+      .left-col  { grid-row: 1 / 3; }
+      .log-card  { min-height: 300px; }
+    }
+
+    /* ── Cards ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.25rem;
+      border-radius: var(--radius);
+      padding: 1rem;
     }
 
     .card-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 1rem;
+      margin-bottom: 0.85rem;
     }
 
-    /* ---- Script cards (left column) ---- */
-    .scripts-col {
-      grid-row: 1 / 3;
+    /* ── Left column ── */
+    .left-col {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 0.85rem;
     }
 
-    .script-card {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
+    /* ── Script cards ── */
+    .script-card { display: flex; flex-direction: column; gap: 0.65rem; }
 
     .script-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 0.5rem;
     }
 
-    .script-name {
-      font-size: 1rem;
-      font-weight: 600;
-    }
+    .script-name { font-size: 0.95rem; font-weight: 600; }
 
     .badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
+      gap: 0.3rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
       text-transform: uppercase;
-      padding: 0.2rem 0.6rem;
+      padding: 0.18rem 0.55rem;
       border-radius: 20px;
+      white-space: nowrap;
     }
+    .badge-idle    { background: rgba(102,102,102,0.2); color: var(--muted); }
+    .badge-running { background: rgba(33,150,243,0.2);  color: var(--blue);  }
+    .badge-done    { background: rgba(76,175,80,0.2);   color: var(--green); }
+    .badge-error   { background: rgba(244,67,54,0.2);   color: var(--red);   }
 
-    .badge-idle   { background: rgba(102,102,102,0.2); color: var(--muted); }
-    .badge-running{ background: rgba(33,150,243,0.2);  color: var(--blue);  }
-    .badge-done   { background: rgba(76,175,80,0.2);   color: var(--green); }
-    .badge-error  { background: rgba(244,67,54,0.2);   color: var(--red);   }
-
-    .dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
     .dot-pulse { animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
-    }
-
-    .script-desc {
-      font-size: 0.82rem;
-      color: var(--muted);
-      line-height: 1.5;
-    }
+    .script-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
 
     .run-btn {
-      align-self: flex-start;
-      padding: 0.5rem 1.1rem;
+      padding: 0.6rem 1.1rem;
       background: var(--accent);
       color: #fff;
       border: none;
-      border-radius: 6px;
+      border-radius: 7px;
       font-size: 0.88rem;
       font-weight: 600;
       cursor: pointer;
       transition: background 0.2s, transform 0.1s, opacity 0.2s;
+      min-height: 42px;
+      align-self: stretch;
+      text-align: center;
     }
+    .run-btn:hover:not(:disabled)  { background: #e63d5e; }
+    .run-btn:active:not(:disabled) { transform: scale(0.98); }
+    .run-btn:disabled              { opacity: 0.4; cursor: not-allowed; }
+    .run-btn.primary               { font-size: 0.95rem; padding: 0.7rem; }
 
-    .run-btn:hover:not(:disabled) { background: #e63d5e; }
-    .run-btn:active:not(:disabled) { transform: scale(0.97); }
-    .run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    /* ---- Log panel ---- */
-    .log-col {
+    /* ── Settings ── */
+    .settings-row {
       display: flex;
-      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
+    .settings-row input[type="number"] {
+      width: 70px;
+      padding: 0.45rem 0.6rem;
+      background: #111;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      min-height: 38px;
+    }
+
+    /* ── Schedule slots ── */
+    .slot-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0; }
+
+    .slot-pill {
+      padding: 0.3rem 0.7rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-family: var(--mono);
+      letter-spacing: 0.03em;
+    }
+    .slot-learned { background: rgba(76,175,80,0.2);  color: var(--green);  border: 1px solid rgba(76,175,80,0.35); }
+    .slot-psych   { background: rgba(255,193,7,0.15); color: var(--yellow); border: 1px solid rgba(255,193,7,0.3);  }
+    .slot-current { box-shadow: 0 0 0 2px currentColor; }
+
+    /* ── Log ── */
     .log-card {
-      flex: 1;
       display: flex;
       flex-direction: column;
     }
@@ -187,13 +214,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.4rem;
       margin-bottom: 0.75rem;
     }
 
-    .log-meta {
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
+    .log-meta { font-size: 0.72rem; color: var(--muted); }
 
     .clear-btn {
       background: transparent;
@@ -201,82 +227,74 @@
       border-radius: 4px;
       color: var(--muted);
       font-size: 0.72rem;
-      padding: 0.2rem 0.55rem;
+      padding: 0.25rem 0.55rem;
       cursor: pointer;
-      transition: color 0.2s;
+      min-height: 30px;
     }
-
     .clear-btn:hover { color: var(--text); }
 
     #log-output {
       flex: 1;
-      background: #0a0a0a;
+      background: #080808;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 0.75rem 1rem;
+      padding: 0.75rem;
       font-family: var(--mono);
-      font-size: 0.78rem;
-      line-height: 1.6;
+      font-size: 0.75rem;
+      line-height: 1.65;
       color: #c9d1d9;
       overflow-y: auto;
-      min-height: 280px;
-      max-height: 380px;
+      min-height: 220px;
+      max-height: 340px;
       white-space: pre-wrap;
       word-break: break-all;
     }
+    @media (min-width: 900px) {
+      #log-output { max-height: 420px; }
+    }
 
-    #log-output .log-line-err { color: #ff6b6b; }
+    #log-output .log-line-err  { color: #ff6b6b; }
     #log-output .log-line-warn { color: var(--yellow); }
-    #log-output .log-line-ok  { color: #9be9a8; }
+    #log-output .log-line-ok   { color: #9be9a8; }
 
-    /* ---- History ---- */
-    .history-col {
-      overflow: hidden;
-    }
+    /* ── History ── */
+    .history-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-    .history-table-wrap {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.82rem;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 
     thead th {
       text-align: left;
-      padding: 0.4rem 0.75rem;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
+      padding: 0.4rem 0.65rem;
+      font-size: 0.67rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
       text-transform: uppercase;
       color: var(--muted);
       border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
 
     tbody tr:hover { background: rgba(255,255,255,0.02); }
-
     tbody td {
-      padding: 0.5rem 0.75rem;
+      padding: 0.5rem 0.65rem;
       border-bottom: 1px solid rgba(255,255,255,0.04);
       vertical-align: middle;
     }
 
-    td.script-cell { font-weight: 600; color: #ccc; font-family: var(--mono); font-size: 0.78rem; }
-    td.time-cell   { color: var(--muted); font-size: 0.75rem; }
-    td.dur-cell    { color: var(--muted); text-align: right; }
+    td.script-cell { font-weight: 600; color: #ccc; font-family: var(--mono); font-size: 0.75rem; }
+    td.time-cell   { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
+    td.dur-cell    { color: var(--muted); text-align: right; white-space: nowrap; }
 
     .status-pill {
       display: inline-block;
       padding: 0.15rem 0.5rem;
       border-radius: 4px;
-      font-size: 0.7rem;
+      font-size: 0.67rem;
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
+      white-space: nowrap;
     }
-
     .status-success { background: rgba(76,175,80,0.2);  color: var(--green); }
     .status-error   { background: rgba(244,67,54,0.2);  color: var(--red);   }
     .status-running { background: rgba(33,150,243,0.2); color: var(--blue);  }
@@ -288,159 +306,130 @@
       font-size: 0.82rem;
     }
 
-    /* ---- Schedule slot pills ---- */
-    .slot-pill {
-      display: inline-block;
-      padding: 0.25rem 0.65rem;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      font-family: var(--mono);
-      letter-spacing: 0.04em;
+    /* ── Icon btn ── */
+    .icon-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      padding: 0.22rem 0.55rem;
+      cursor: pointer;
+      min-height: 28px;
     }
-    .slot-learned  { background: rgba(76,175,80,0.2);   color: var(--green); border: 1px solid rgba(76,175,80,0.35); }
-    .slot-psych    { background: rgba(255,193,7,0.15);  color: var(--yellow);border: 1px solid rgba(255,193,7,0.3); }
-    .slot-current  { box-shadow: 0 0 0 2px currentColor; }
+    .icon-btn:hover { color: var(--text); }
 
-    /* Scrollbar styling */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    /* ── Scrollbars ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* ── Helper text ── */
+    .hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.4; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>last<span>seconds</span>bc <span style="color:#555;font-weight:400;font-size:0.85rem;">/ pipeline dashboard</span></h1>
-  <form action="/logout" method="get" style="display:inline;">
+  <h1>last<span>seconds</span>bc <small>/ dashboard</small></h1>
+  <form action="/logout" method="get">
     <button type="submit" class="logout-btn">Logout</button>
   </form>
 </header>
 
 <main>
 
-  <!-- ---- Left: Script Controls ---- -->
-  <div class="scripts-col">
+  <!-- ════════ LEFT COLUMN ════════ -->
+  <div class="left-col">
 
-    <!-- Full Pipeline — primary action -->
-    <div class="card script-card" id="card-run_pipeline" style="border-color: rgba(255,77,109,0.4);">
+    <!-- Full Pipeline -->
+    <div class="card script-card" style="border-color:rgba(255,77,109,0.35);">
       <div class="card-title">Full Pipeline</div>
       <div class="script-header">
         <span class="script-name">Run Pipeline</span>
-        <span class="badge badge-idle" id="badge-run_pipeline">
-          <span class="dot"></span> Idle
-        </span>
+        <span class="badge badge-idle" id="badge-run_pipeline"><span class="dot"></span> Idle</span>
       </div>
-      <p class="script-desc">Generates a full video end-to-end: trend research → script → images → voiceover → assembly. Takes ~5-10 min.</p>
-      <button class="run-btn" id="btn-run_pipeline" onclick="runScript('run_pipeline')"
-              style="background:var(--accent);font-size:0.95rem;padding:0.6rem 1.4rem;">
-        ▶ Run Full Pipeline
-      </button>
+      <p class="script-desc">Trend research → script → images → voiceover → assembly → upload. Takes ~5–10 min.</p>
+      <button class="run-btn primary" id="btn-run_pipeline" onclick="runScript('run_pipeline')">▶ Run Full Pipeline</button>
     </div>
 
-    <div class="card script-card" id="card-image_generator">
-      <div class="card-title">Script</div>
+    <!-- Image Generator -->
+    <div class="card script-card">
+      <div class="card-title">Images Only</div>
       <div class="script-header">
         <span class="script-name">Image Generator</span>
-        <span class="badge badge-idle" id="badge-image_generator">
-          <span class="dot"></span> Idle
-        </span>
+        <span class="badge badge-idle" id="badge-image_generator"><span class="dot"></span> Idle</span>
       </div>
-      <p class="script-desc">Generates images for the current story using Leonardo / Together AI.</p>
-      <button class="run-btn" id="btn-image_generator" onclick="runScript('image_generator')">
-        ▶ Run
-      </button>
+      <p class="script-desc">Regenerate images for the current script using Leonardo / Together AI.</p>
+      <button class="run-btn" id="btn-image_generator" onclick="runScript('image_generator')">▶ Run</button>
     </div>
 
-    <div class="card script-card" id="card-assembler">
-      <div class="card-title">Script</div>
+    <!-- Assembler -->
+    <div class="card script-card">
+      <div class="card-title">Assembly Only</div>
       <div class="script-header">
         <span class="script-name">Assembler</span>
-        <span class="badge badge-idle" id="badge-assembler">
-          <span class="dot"></span> Idle
-        </span>
+        <span class="badge badge-idle" id="badge-assembler"><span class="dot"></span> Idle</span>
       </div>
-      <p class="script-desc">Assembles clips, audio, and images into the final video.</p>
-      <button class="run-btn" id="btn-assembler" onclick="runScript('assembler')">
-        ▶ Run
-      </button>
+      <p class="script-desc">Re-assemble clips, audio and images into the final video.</p>
+      <button class="run-btn" id="btn-assembler" onclick="runScript('assembler')">▶ Run</button>
     </div>
 
-    <!-- ---- Scheduler Settings ---- -->
-    <div class="card" id="card-settings">
+    <!-- Scheduler Settings -->
+    <div class="card">
       <div class="card-title">Scheduler Settings</div>
-      <div style="display:flex;flex-direction:column;gap:0.6rem;">
-        <label for="max-videos-input" style="font-size:0.82rem;color:var(--muted);">
-          Videos published per day
-        </label>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          <input
-            type="number"
-            id="max-videos-input"
-            min="1" max="20" value="4"
-            style="width:72px;padding:0.38rem 0.6rem;background:#111;border:1px solid var(--border);
-                   border-radius:6px;color:var(--text);font-size:0.9rem;outline:none;"
-          />
-          <button onclick="saveSettings()" class="run-btn"
-                  style="padding:0.4rem 0.9rem;font-size:0.82rem;">
-            Save
-          </button>
-          <span id="settings-status" style="font-size:0.75rem;"></span>
-        </div>
-        <p style="font-size:0.75rem;color:var(--muted);margin-top:0.1rem;">
-          Scheduler reads this live — no restart needed.
-        </p>
+      <label for="max-videos-input" style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.45rem;">
+        Videos per day
+      </label>
+      <div class="settings-row">
+        <input type="number" id="max-videos-input" min="1" max="20" value="4" />
+        <button onclick="saveSettings()" class="run-btn" style="flex:1;min-width:80px;">Save</button>
+        <span id="settings-status" style="font-size:0.75rem;"></span>
       </div>
+      <p class="hint">Scheduler picks this up live — no restart needed.</p>
     </div>
 
-    <!-- ---- Today's Adaptive Schedule ---- -->
-    <div class="card" id="card-schedule">
+    <!-- Today's Schedule -->
+    <div class="card">
       <div class="card-title">Today's Post Schedule</div>
 
-      <!-- Tier badge -->
-      <div style="margin-bottom:0.75rem;">
+      <div style="margin-bottom:0.6rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
         <span id="sched-tier-badge" style="
-          display:inline-block;
-          font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
-          padding:0.2rem 0.6rem;border-radius:20px;
-          background:rgba(102,102,102,0.2);color:var(--muted);
-        ">Loading…</span>
-        <span id="sched-data-count" style="font-size:0.72rem;color:var(--muted);margin-left:0.5rem;"></span>
+          display:inline-block;font-size:0.68rem;font-weight:700;letter-spacing:0.06em;
+          text-transform:uppercase;padding:0.2rem 0.6rem;border-radius:20px;
+          background:rgba(102,102,102,0.2);color:var(--muted);">Loading…</span>
+        <span id="sched-data-count" style="font-size:0.7rem;color:var(--muted);"></span>
       </div>
 
-      <!-- Time slots -->
-      <div id="sched-slots" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem;">
+      <div class="slot-pills" id="sched-slots">
         <span style="color:var(--muted);font-size:0.8rem;">—</span>
       </div>
 
-      <!-- Source breakdown -->
-      <div id="sched-source" style="font-size:0.75rem;color:var(--muted);line-height:1.6;"></div>
+      <div id="sched-source" style="font-size:0.72rem;color:var(--muted);line-height:1.7;margin-top:0.4rem;"></div>
 
-      <button onclick="loadSchedule()" style="
-        margin-top:0.6rem;background:transparent;border:1px solid var(--border);
-        border-radius:4px;color:var(--muted);font-size:0.72rem;padding:0.2rem 0.55rem;cursor:pointer;
-      ">↻ Refresh</button>
+      <button onclick="loadSchedule()" class="icon-btn" style="margin-top:0.65rem;">↻ Refresh</button>
     </div>
 
   </div>
+  <!-- ════════ END LEFT ════════ -->
 
-  <!-- ---- Right top: Live Log ---- -->
-  <div class="card log-card log-col">
+  <!-- ════════ LIVE LOG ════════ -->
+  <div class="card log-card">
     <div class="log-header">
       <span class="card-title" style="margin:0;">Live Output</span>
-      <div style="display:flex;gap:0.5rem;align-items:center;">
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
         <span class="log-meta" id="log-meta">Waiting for run…</span>
         <button class="clear-btn" onclick="clearLog()">Clear</button>
       </div>
     </div>
-    <div id="log-output"><span style="color:#444;">// Output will appear here when a script runs</span></div>
+    <div id="log-output"><span style="color:#333;">// Output will appear here when a script runs</span></div>
   </div>
 
-  <!-- ---- Right bottom: History ---- -->
-  <div class="card history-col">
+  <!-- ════════ HISTORY ════════ -->
+  <div class="card">
     <div class="card-title">Run History</div>
-    <div class="history-table-wrap">
+    <div class="history-wrap">
       <table>
         <thead>
           <tr>
@@ -460,46 +449,31 @@
 </main>
 
 <script>
-  // ---- State ----
   let currentRunId = null;
   let currentScript = null;
   let eventSource = null;
 
-  // ---- Helpers ----
+  // ── Helpers ──
   function setBadge(script, state) {
     const badge = document.getElementById('badge-' + script);
     if (!badge) return;
     badge.className = 'badge';
-    badge.innerHTML = '';
-
     const dot = document.createElement('span');
     dot.className = 'dot';
-
-    if (state === 'idle') {
-      badge.classList.add('badge-idle');
-      dot.classList.remove('dot-pulse');
-      badge.appendChild(dot);
-      badge.append(' Idle');
-    } else if (state === 'running') {
-      badge.classList.add('badge-running');
-      dot.classList.add('dot-pulse');
-      badge.appendChild(dot);
-      badge.append(' Running');
-    } else if (state === 'done') {
-      badge.classList.add('badge-done');
-      badge.appendChild(dot);
-      badge.append(' Done');
-    } else if (state === 'error') {
-      badge.classList.add('badge-error');
-      badge.appendChild(dot);
-      badge.append(' Error');
-    }
+    const labels = { idle:'Idle', running:'Running', done:'Done', error:'Error' };
+    const cls    = { idle:'badge-idle', running:'badge-running', done:'badge-done', error:'badge-error' };
+    badge.classList.add(cls[state] || 'badge-idle');
+    if (state === 'running') dot.classList.add('dot-pulse');
+    badge.innerHTML = '';
+    badge.appendChild(dot);
+    badge.append(' ' + (labels[state] || state));
   }
 
-  function setButtonsDisabled(disabled) {
-    document.getElementById('btn-run_pipeline').disabled = disabled;
-    document.getElementById('btn-image_generator').disabled = disabled;
-    document.getElementById('btn-assembler').disabled = disabled;
+  function setButtonsDisabled(d) {
+    ['run_pipeline','image_generator','assembler'].forEach(s => {
+      const b = document.getElementById('btn-' + s);
+      if (b) b.disabled = d;
+    });
   }
 
   function clearLog() {
@@ -518,21 +492,25 @@
   function fmtDuration(s) {
     if (s == null) return '—';
     if (s < 60) return s.toFixed(1) + 's';
-    const m = Math.floor(s / 60);
-    return m + 'm ' + (s % 60).toFixed(0) + 's';
+    return Math.floor(s / 60) + 'm ' + (s % 60).toFixed(0) + 's';
   }
 
   function fmtTime(iso) {
     if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleString();
+    return new Date(iso).toLocaleString();
   }
 
-  // ---- Run a script ----
-  async function runScript(script) {
-    // Clear previous stream
-    if (eventSource) { eventSource.close(); eventSource = null; }
+  function classifyLine(text) {
+    const t = text.toLowerCase();
+    if (t.includes('error') || t.includes('traceback') || t.includes('exception')) return 'log-line-err';
+    if (t.includes('warn')) return 'log-line-warn';
+    if (t.includes('✅') || t.includes('done') || t.includes('success') || t.includes('complete') || t.includes('published')) return 'log-line-ok';
+    return '';
+  }
 
+  // ── Run script ──
+  async function runScript(script) {
+    if (eventSource) { eventSource.close(); eventSource = null; }
     clearLog();
     document.getElementById('log-meta').textContent = 'Starting ' + script + '…';
 
@@ -545,38 +523,27 @@
       return;
     }
 
-    currentRunId = data.run_id;
+    currentRunId  = data.run_id;
     currentScript = script;
-
     setBadge(script, 'running');
     setButtonsDisabled(true);
     document.getElementById('log-meta').textContent = 'Streaming: ' + script + '…';
 
-    // Connect SSE
     eventSource = new EventSource('/stream/' + currentRunId);
 
-    eventSource.onmessage = function(e) {
-      const text = e.data;
-      let cls = '';
-      const lower = text.toLowerCase();
-      if (lower.includes('error') || lower.includes('traceback') || lower.includes('exception')) cls = 'log-line-err';
-      else if (lower.includes('warn')) cls = 'log-line-warn';
-      else if (lower.includes('done') || lower.includes('success') || lower.includes('complete')) cls = 'log-line-ok';
-      appendLog(text, cls);
-    };
+    eventSource.onmessage = e => appendLog(e.data, classifyLine(e.data));
 
-    eventSource.addEventListener('done', function(e) {
+    eventSource.addEventListener('done', () => {
       appendLog('', '');
       appendLog('[RUN COMPLETE]', 'log-line-ok');
-      eventSource.close();
-      eventSource = null;
+      eventSource.close(); eventSource = null;
       setBadge(script, 'done');
       setButtonsDisabled(false);
       document.getElementById('log-meta').textContent = 'Run finished.';
       loadHistory();
     });
 
-    eventSource.onerror = function() {
+    eventSource.onerror = () => {
       appendLog('[SSE connection lost]', 'log-line-err');
       if (eventSource) { eventSource.close(); eventSource = null; }
       setBadge(script, 'error');
@@ -586,63 +553,59 @@
     };
   }
 
-  // ---- History ----
+  // ── History ──
   async function loadHistory() {
     const resp = await fetch('/history');
     if (!resp.ok) return;
     const rows = await resp.json();
     const tbody = document.getElementById('history-body');
-    if (rows.length === 0) {
+    if (!rows.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No runs yet.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(r => {
-      const pillClass = r.status === 'success' ? 'status-success' : r.status === 'error' ? 'status-error' : 'status-running';
+      const pc = r.status === 'success' ? 'status-success' : r.status === 'error' ? 'status-error' : 'status-running';
       return `<tr>
         <td class="script-cell">${r.script}</td>
         <td class="time-cell">${fmtTime(r.started_at)}</td>
         <td class="dur-cell">${fmtDuration(r.duration_s)}</td>
-        <td><span class="status-pill ${pillClass}">${r.status}</span></td>
+        <td><span class="status-pill ${pc}">${r.status}</span></td>
       </tr>`;
     }).join('');
   }
 
-  // ---- Poll server status on load (in case a run is already active) ----
+  // ── Server status on load ──
   async function checkServerStatus() {
     const resp = await fetch('/status');
     if (!resp.ok) return;
     const data = await resp.json();
-    if (data.running_script) {
-      // Another tab started a run — disable buttons
-      setBadge(data.running_script, 'running');
-      setButtonsDisabled(true);
-      document.getElementById('log-meta').textContent = data.running_script + ' is running…';
+    if (!data.running_script) return;
 
-      // Reconnect SSE
-      currentRunId = data.run_id;
-      currentScript = data.running_script;
-      clearLog();
-      eventSource = new EventSource('/stream/' + currentRunId);
+    setBadge(data.running_script, 'running');
+    setButtonsDisabled(true);
+    document.getElementById('log-meta').textContent = data.running_script + ' is running…';
+    currentRunId  = data.run_id;
+    currentScript = data.running_script;
+    clearLog();
 
-      eventSource.onmessage = function(e) { appendLog(e.data, ''); };
-      eventSource.addEventListener('done', function() {
-        eventSource.close(); eventSource = null;
-        setBadge(currentScript, 'done');
-        setButtonsDisabled(false);
-        document.getElementById('log-meta').textContent = 'Run finished.';
-        loadHistory();
-      });
-      eventSource.onerror = function() {
-        if (eventSource) { eventSource.close(); eventSource = null; }
-        setBadge(currentScript, 'error');
-        setButtonsDisabled(false);
-        document.getElementById('log-meta').textContent = 'Connection error.';
-        loadHistory();
-      };
-    }
+    eventSource = new EventSource('/stream/' + currentRunId);
+    eventSource.onmessage = e => appendLog(e.data, classifyLine(e.data));
+    eventSource.addEventListener('done', () => {
+      eventSource.close(); eventSource = null;
+      setBadge(currentScript, 'done');
+      setButtonsDisabled(false);
+      document.getElementById('log-meta').textContent = 'Run finished.';
+      loadHistory();
+    });
+    eventSource.onerror = () => {
+      if (eventSource) { eventSource.close(); eventSource = null; }
+      setBadge(currentScript, 'error');
+      setButtonsDisabled(false);
+      loadHistory();
+    };
   }
 
-  // ---- Adaptive Schedule ----
+  // ── Schedule ──
   async function loadSchedule() {
     try {
       const resp = await fetch('/api/schedule');
@@ -652,52 +615,45 @@
       // Tier badge
       const tierBadge = document.getElementById('sched-tier-badge');
       const tierMap = {
-        'day-specific': { label: '🧠 AI Learned (' + d.today + ')', cls: 'background:rgba(76,175,80,0.2);color:#4caf50;' },
-        'cross-day':    { label: '📈 Partially Learned',              cls: 'background:rgba(33,150,243,0.2);color:#2196f3;' },
-        'psychology':   { label: '🔮 Psychology Defaults',            cls: 'background:rgba(255,193,7,0.15);color:#ffc107;' },
+        'day-specific': { label: '🧠 AI Learned (' + d.today + ')', style: 'background:rgba(76,175,80,0.2);color:#4caf50;' },
+        'cross-day':    { label: '📈 Partially Learned',              style: 'background:rgba(33,150,243,0.2);color:#2196f3;' },
+        'psychology':   { label: '🔮 Psychology Defaults',            style: 'background:rgba(255,193,7,0.15);color:#ffc107;' },
       };
       const tier = tierMap[d.tier] || tierMap['psychology'];
       tierBadge.textContent = tier.label;
       tierBadge.setAttribute('style',
-        'display:inline-block;font-size:0.7rem;font-weight:700;letter-spacing:0.06em;' +
-        'text-transform:uppercase;padding:0.2rem 0.6rem;border-radius:20px;' + tier.cls
+        'display:inline-block;font-size:0.68rem;font-weight:700;letter-spacing:0.06em;' +
+        'text-transform:uppercase;padding:0.2rem 0.6rem;border-radius:20px;' + tier.style
       );
 
       // Data count
-      const countEl = document.getElementById('sched-data-count');
-      if (d.data_driven) {
-        countEl.textContent = `(${d.day_videos} ${d.today} posts tracked, ${d.any_videos} total)`;
-      } else {
-        countEl.textContent = `(${d.any_videos} posts tracked — need more data to learn)`;
-      }
+      document.getElementById('sched-data-count').textContent = d.data_driven
+        ? `(${d.day_videos} ${d.today} posts, ${d.any_videos} total)`
+        : `(${d.any_videos} posts tracked — learning…)`;
 
       // Slot pills
-      const slotsEl = document.getElementById('sched-slots');
       const nowH = new Date().getHours();
       const learnedSet = new Set(d.learned_hours || []);
+      const slotsEl = document.getElementById('sched-slots');
       slotsEl.innerHTML = (d.schedule || []).map(slot => {
         const h = parseInt(slot);
         const isCurrent = h === nowH;
-        const isLearned = learnedSet.has(slot);
+        const isLearned = learnedSet.has(slot.split(':')[0] + ':00');
         const cls = (isLearned ? 'slot-learned' : 'slot-psych') + (isCurrent ? ' slot-current' : '');
         return `<span class="slot-pill ${cls}">${slot}${isCurrent ? ' ◀' : ''}</span>`;
-      }).join('') || '<span style="color:var(--muted);font-size:0.8rem;">No slots scheduled</span>';
+      }).join('') || '<span style="color:var(--muted);font-size:0.8rem;">No slots today</span>';
 
       // Source breakdown
-      const srcEl = document.getElementById('sched-source');
       const learnedStr = d.learned_hours && d.learned_hours.length
         ? `<span style="color:var(--green);">●</span> Learned: ${d.learned_hours.join(', ')}`
         : `<span style="color:var(--muted);">● No learned data yet</span>`;
       const psychStr = `<span style="color:var(--yellow);">●</span> Psychology fill: ${(d.psych_hours || []).join(', ')}`;
-      srcEl.innerHTML = learnedStr + '<br>' + psychStr;
+      document.getElementById('sched-source').innerHTML = learnedStr + '<br>' + psychStr;
 
     } catch (e) {}
   }
 
-  // Auto-refresh schedule every 5 min
-  setInterval(loadSchedule, 5 * 60 * 1000);
-
-  // ---- Settings ----
+  // ── Settings ──
   async function loadSettings() {
     try {
       const resp = await fetch('/api/settings');
@@ -717,13 +673,8 @@
         body: JSON.stringify({ max_videos_per_day: val }),
       });
       const data = await resp.json();
-      if (resp.ok) {
-        statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ Saved';
-      } else {
-        statusEl.style.color = 'var(--red)';
-        statusEl.textContent = data.error || 'Error';
-      }
+      statusEl.style.color = resp.ok ? 'var(--green)' : 'var(--red)';
+      statusEl.textContent  = resp.ok ? '✓ Saved' : (data.error || 'Error');
     } catch (e) {
       statusEl.style.color = 'var(--red)';
       statusEl.textContent = 'Network error';
@@ -731,7 +682,10 @@
     setTimeout(() => { statusEl.textContent = ''; }, 2500);
   }
 
-  // ---- Init ----
+  // ── Auto-refresh schedule every 5 min ──
+  setInterval(loadSchedule, 5 * 60 * 1000);
+
+  // ── Init ──
   loadHistory();
   loadSettings();
   loadSchedule();
