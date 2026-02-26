@@ -238,55 +238,51 @@ def generate_voiceover(script_data, output_path=None):
                 print(f"❌ Voiceover exception: {e}")
                 return None
 
-    # ── All ElevenLabs keys failed → fallback to OpenAI TTS ──
-    print("   ⚠️  All ElevenLabs keys failed — falling back to OpenAI TTS...")
-    return _openai_tts_fallback(script, voice_type, output_path)
+    # ── All ElevenLabs keys failed → fallback to edge-tts (free, no API key) ──
+    print("   ⚠️  All ElevenLabs keys failed — falling back to edge-tts (Microsoft neural)...")
+    return _edge_tts_fallback(script, voice_type, output_path)
 
 
-def _openai_tts_fallback(script, voice_type, output_path):
-    """OpenAI TTS fallback when all ElevenLabs keys are blocked."""
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if not openai_key:
-        print("❌ No OpenAI API key — cannot fallback")
-        return None
-
-    # Map voice types to OpenAI voices
+def _edge_tts_fallback(script, voice_type, output_path):
+    """
+    edge-tts fallback — Microsoft Edge neural TTS.
+    Completely free, no API key, works from any IP including Railway.
+    """
+    # Map voice types to edge-tts neural voices
     voice_map = {
-        "deep_male":      "onyx",
-        "whispery_male":  "fable",
-        "calm_female":    "nova",
-        "energetic_male": "echo",
+        "deep_male":      "en-US-ChristopherNeural",
+        "whispery_male":  "en-GB-RyanNeural",
+        "calm_female":    "en-US-JennyNeural",
+        "energetic_male": "en-US-GuyNeural",
     }
-    oai_voice = voice_map.get(voice_type, "onyx")
+    edge_voice = voice_map.get(voice_type, "en-US-ChristopherNeural")
 
     try:
-        response = requests.post(
-            "https://api.openai.com/v1/audio/speech",
-            headers={
-                "Authorization": f"Bearer {openai_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "tts-1",
-                "input": script,
-                "voice": oai_voice,
-                "speed": 0.95,
-            },
-            timeout=120,
+        import edge_tts
+    except ImportError:
+        print("   Installing edge-tts...")
+        import subprocess
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "edge-tts", "-q"],
+            check=True
         )
+        import edge_tts
 
-        if response.status_code == 200:
-            with open(output_path, "wb") as f:
-                f.write(response.content)
-            size_kb = os.path.getsize(output_path) / 1024
-            print(f"✅ Voiceover saved via OpenAI TTS — {size_kb:.0f} KB  (voice: {oai_voice})")
-            return output_path
+    try:
+        import asyncio
 
-        print(f"❌ OpenAI TTS error {response.status_code}: {response.text[:200]}")
-        return None
+        async def _synthesize():
+            communicate = edge_tts.Communicate(script, edge_voice, rate="-5%")
+            await communicate.save(output_path)
+
+        asyncio.run(_synthesize())
+
+        size_kb = os.path.getsize(output_path) / 1024
+        print(f"✅ Voiceover saved via edge-tts — {size_kb:.0f} KB  (voice: {edge_voice})")
+        return output_path
 
     except Exception as e:
-        print(f"❌ OpenAI TTS exception: {e}")
+        print(f"❌ edge-tts failed: {e}")
         return None
 
 
