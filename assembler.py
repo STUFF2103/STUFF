@@ -412,39 +412,96 @@ def _generate_hook_background(hook_text):
             img = img.filter(ImageFilter.GaussianBlur(radius=blur))
         return img
 
-    # ── Tier 1: Wikipedia real photo — instant, public domain ────────────
+    # ── Tier 1: Wikimedia Commons — story-contextual, public domain only ──
+    # Searches with the hook text so we get images RELATED to the story
+    # (e.g. "Tesla laboratory" not just Tesla's portrait, "Disney FBI contract" etc.)
+    # All Wikimedia Commons images are public domain or CC — zero copyright risk.
     try:
-        # Search Wikipedia for the hook topic and get the main page image
-        search_resp = requests.get(
-            "https://en.wikipedia.org/w/api.php",
+        # Skip file types that are never photos (svg, gif, ogg, pdf, tif maps etc.)
+        _PHOTO_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+        _SKIP_WORDS = ("logo", "map", "flag", "icon", "seal", "coat", "symbol",
+                       "diagram", "chart", "graph", "signature", "stamp", "svg")
+
+        def _is_good_image(title_or_url):
+            t = title_or_url.lower()
+            if not any(t.endswith(e) for e in _PHOTO_EXTS):
+                return False
+            if any(w in t for w in _SKIP_WORDS):
+                return False
+            return True
+
+        # Extract meaningful search keywords from hook text
+        # Remove possessives, filler words, ALL CAPS → clean noun query
+        _HOOK_FILLER = {
+            "the", "a", "an", "of", "in", "to", "is", "was", "were", "be",
+            "dark", "darkest", "shocking", "secret", "secrets", "truth", "exposed",
+            "nobody", "talks", "about", "revealed", "hidden", "real", "true",
+            "blood", "money", "contract", "never", "told", "untold", "story",
+            "what", "how", "why", "who", "this", "that", "and", "or", "but",
+            "s", "most", "ever", "you", "your", "they", "their", "his", "her",
+        }
+        clean_words = []
+        for w in hook_text.replace("'S", "").replace("'S", "").split():
+            w_clean = w.strip(".,!?\"'").lower()
+            if w_clean and w_clean not in _HOOK_FILLER and len(w_clean) > 2:
+                clean_words.append(w_clean.capitalize())
+        search_query = " ".join(clean_words[:4]) if clean_words else hook_text[:40]
+
+        commons_resp = requests.get(
+            "https://commons.wikimedia.org/w/api.php",
             params={
                 "action":      "query",
-                "generator":   "search",
-                "gsrsearch":   hook_text,
-                "gsrlimit":    1,
-                "prop":        "pageimages",
-                "piprop":      "original",
+                "list":        "search",
+                "srsearch":    search_query,     # cleaned story keywords
+                "srnamespace": 6,                # namespace 6 = File (images)
+                "srlimit":     20,
                 "format":      "json",
-                "redirects":   1,
             },
             timeout=10,
             headers={"User-Agent": "DarkMindBot/1.0"},
         )
-        if search_resp.status_code == 200:
-            pages = search_resp.json().get("query", {}).get("pages", {})
-            for page in pages.values():
-                img_url = page.get("original", {}).get("source", "")
-                if img_url and any(img_url.lower().endswith(ext)
-                                   for ext in (".jpg", ".jpeg", ".png", ".webp")):
+        if commons_resp.status_code == 200:
+            results = commons_resp.json().get("query", {}).get("search", [])
+            random.shuffle(results)            # vary which image we pick each run
+            for item in results:
+                title = item.get("title", "")  # e.g. "File:Tesla_lab.jpg"
+                if not _is_good_image(title):
+                    continue
+                # Get the actual image URL via imageinfo
+                info_resp = requests.get(
+                    "https://commons.wikimedia.org/w/api.php",
+                    params={
+                        "action": "query",
+                        "titles": title,
+                        "prop":   "imageinfo",
+                        "iiprop": "url|size",
+                        "format": "json",
+                    },
+                    timeout=10,
+                    headers={"User-Agent": "DarkMindBot/1.0"},
+                )
+                if info_resp.status_code != 200:
+                    continue
+                pages = info_resp.json().get("query", {}).get("pages", {})
+                for pg in pages.values():
+                    info = pg.get("imageinfo", [{}])[0]
+                    img_url = info.get("url", "")
+                    width   = info.get("width",  0)
+                    height  = info.get("height", 0)
+                    # Skip tiny images (less than 300px on either side)
+                    if width < 300 or height < 300:
+                        continue
+                    if not _is_good_image(img_url):
+                        continue
                     img_resp = requests.get(img_url, timeout=20,
                                             headers={"User-Agent": "DarkMindBot/1.0"})
-                    if img_resp.status_code == 200 and len(img_resp.content) > 10_000:
+                    if img_resp.status_code == 200 and len(img_resp.content) > 15_000:
                         img = Image.open(io.BytesIO(img_resp.content)).convert("RGB")
                         img = _darken(img, overlay_alpha=0.60, blur=1.2, desaturate=0.35)
-                        print("  Hook background: Wikipedia real photo")
+                        print(f"  Hook background: Wikimedia Commons — {title[5:45]}")
                         return img
     except Exception as e:
-        print(f"  Wikipedia hook: {e.__class__.__name__}")
+        print(f"  Wikimedia Commons hook: {e.__class__.__name__}")
 
     # ── Tier 2: Leonardo AI — ultra-detailed cinematic art ───────────────
     _leo_keys = [k for k in [
