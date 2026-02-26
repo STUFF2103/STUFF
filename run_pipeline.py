@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).parent
 
 # ── PUBLISH TOGGLE ────────────────────────────────────────────
 # Set to False to produce the video locally without uploading
-PUBLISH = False
+PUBLISH = True
 # ─────────────────────────────────────────────────────────────
 
 # Stop-words ignored when comparing topic similarity
