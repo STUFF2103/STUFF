@@ -459,7 +459,7 @@ def generate_all_images(script_data, output_dir="images", clips_dir="clips"):
     }
 
     print(f"\n🎨 Generating visuals for {len(beats)} beats  |  Style: {vis_style}")
-    print(f"🔑 Leonardo AI: DISABLED — clips only (Pexels/Pixabay video)")
+    print(f"🎬 All beats → video clips only (Pexels / Pixabay)")
 
     generated_visuals = []
 
@@ -535,10 +535,7 @@ def generate_all_images(script_data, output_dir="images", clips_dir="clips"):
                 variation_idx += 1
             _used_keywords.add(video_kws)
 
-        # ALL beats use clips — Leonardo AI is disabled
-        visual_type  = beat_data.get("visual_type", "clip")
-        is_clip_beat = True   # always clip regardless of visual_type field
-
+        # All beats → video clips only
         print(f"\n🎬 Beat {beat_num}: VIDEO CLIP — {(video_kws or image_prompt)[:50]}")
 
         result      = None
@@ -553,7 +550,6 @@ def generate_all_images(script_data, output_dir="images", clips_dir="clips"):
                 if result:
                     result_type = "clip"
 
-        # Last resort chain: gaming clip → stock photo (darkened)
         if not result:
             print(f"  ⚠️  No topic clip — trying gaming footage for beat {beat_num}")
             result = fetch_gaming_clip(beat_num, clips_dir)
