@@ -24,7 +24,15 @@ from flask import (
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+
+# Persistent secret key — survives restarts so login session stays active
+_sk_file = Path(__file__).parent / ".flask_secret"
+if _sk_file.exists():
+    app.secret_key = _sk_file.read_bytes()
+else:
+    _sk = os.urandom(32)
+    _sk_file.write_bytes(_sk)
+    app.secret_key = _sk
 
 BASE_DIR = Path(__file__).parent
 HISTORY_FILE = BASE_DIR / "run_history.json"

@@ -9,3 +9,4 @@ google-auth-oauthlib>=1.2.0
 google-auth-httplib2>=0.2.0
 schedule>=1.2.1
 edge-tts>=6.1.9
+pyngrok>=7.0.0
