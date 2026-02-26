@@ -376,7 +376,59 @@ def build_tiktok_captions(word_timestamps, font_path=None, script_data=None, hig
 
 
 # ============================================================
-# HOOK CLIP — 1.8s silent black card with hook_text in Anton font
+# HOOK BACKGROUND — cinematic AI image via Pollinations.ai (free)
+# ============================================================
+def _generate_hook_background(hook_text):
+    """
+    Generates a dramatic cinematic 1080x1920 background image from the hook text.
+    Uses Pollinations.ai — completely free, no API key, works from any IP.
+    Returns a PIL Image or None on failure.
+    """
+    import urllib.parse, urllib.request, io
+    try:
+        from PIL import Image, ImageDraw, ImageFilter
+    except ImportError:
+        return None
+
+    # Build a cinematic prompt from the hook text
+    prompt = (
+        f"ultra dramatic cinematic scene inspired by: {hook_text}. "
+        "dark atmospheric, moody lighting, deep shadows, film noir style, "
+        "high contrast, vertical portrait 9:16, photorealistic, 4K, "
+        "no text, no words, no letters, pure visual storytelling"
+    )
+
+    try:
+        encoded = urllib.parse.quote(prompt)
+        url = (
+            f"https://image.pollinations.ai/prompt/{encoded}"
+            f"?width=1080&height=1920&nologo=true&model=flux&enhance=true"
+        )
+        print(f"  🎨 Generating hook background via Pollinations.ai...")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            img_data = resp.read()
+
+        img = Image.open(io.BytesIO(img_data)).convert("RGB")
+        img = img.resize((1080, 1920), Image.LANCZOS)
+
+        # Dark overlay so text stays readable (semi-transparent black layer)
+        overlay = Image.new("RGB", (1080, 1920), (0, 0, 0))
+        img = Image.blend(img, overlay, alpha=0.55)
+
+        # Slight blur for cinematic depth-of-field feel
+        img = img.filter(ImageFilter.GaussianBlur(radius=1.2))
+
+        print(f"  ✅ Hook background generated")
+        return img
+
+    except Exception as e:
+        print(f"  ⚠️  Hook background failed ({e}) — using black")
+        return None
+
+
+# ============================================================
+# HOOK CLIP — 1.8s cinematic card with hook_text in Anton font
 # ============================================================
 def make_hook_clip(hook_text, duration=1.8, output_dir=None):
     """
@@ -394,7 +446,11 @@ def make_hook_clip(hook_text, duration=1.8, output_dir=None):
     try:
         from PIL import Image, ImageDraw, ImageFont
 
-        img  = Image.new("RGB", (1080, 1920), color=(0, 0, 0))
+        # ── Generate cinematic background via Pollinations.ai (free, no key) ──
+        img = _generate_hook_background(hook_text)
+        if img is None:
+            img = Image.new("RGB", (1080, 1920), color=(0, 0, 0))
+
         draw = ImageDraw.Draw(img)
 
         # Load Anton if available, else fall back to Arial Bold
