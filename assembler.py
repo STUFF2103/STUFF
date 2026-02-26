@@ -679,9 +679,8 @@ def apply_ken_burns(image_path, duration, index, camera_motion=None):
             f"{effect},"
             f"fps={fps}"
         ),
-        "-t", str(duration),
+        "-frames:v", str(frames),
         "-c:v", "libx264", "-preset", "fast", "-crf", "20",
-        "-vsync", "cfr",
         "-pix_fmt", "yuv420p", "-an",
         output,
     ]
@@ -693,18 +692,19 @@ def apply_ken_burns(image_path, duration, index, camera_motion=None):
 # ============================================================
 def process_video_clip(clip_path, duration, index):
     output = str(TEMP_DIR / f"clip_{index}.mp4")
+    frames = max(1, int(duration * 30))
     cmd = [
         "ffmpeg", "-y",
         "-stream_loop", "-1",         # loop clip if shorter than requested duration
         "-i", clip_path,
-        "-t", str(duration),          # exact output duration — no +0.1 offset drift
         "-vf", (
-            "fps=30,"                  # convert VFR → CFR first (prevents stutters)
             "scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920"
+            "crop=1080:1920,"
+            "fps=30"                   # CFR output — fps filter at end avoids vsync conflict
         ),
+        "-frames:v", str(frames),     # exact frame count (replaces -t to avoid vsync issues)
         "-c:v", "libx264", "-preset", "fast", "-crf", "20",
-        "-vsync", "cfr",              # enforce constant frame rate output
+        "-pix_fmt", "yuv420p",
         "-an",
         output,
     ]
@@ -786,7 +786,7 @@ def concat_with_xfade(clip_paths, durations, script_data=None):
         "-filter_complex", ";".join(filters),
         "-map", "[vout]",
         "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-        "-r", "30", "-vsync", "cfr", "-an", output,
+        "-r", "30", "-pix_fmt", "yuv420p", "-an", output,
     ]
     return output if run_ffmpeg(cmd, "Concat with xfade transitions") else None
 
