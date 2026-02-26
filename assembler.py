@@ -225,11 +225,11 @@ def get_word_timestamps(audio_path, time_offset=0.0):
     """
     print("🎯 Running Whisper for word timestamps...")
     try:
-        import whisper
+        from faster_whisper import WhisperModel
         model = None
         for model_name in ["base", "tiny"]:
             try:
-                model = whisper.load_model(model_name)
+                model = WhisperModel(model_name, device="cpu", compute_type="int8")
                 print(f"   Whisper model: {model_name}")
                 break
             except Exception as e:
@@ -238,16 +238,17 @@ def get_word_timestamps(audio_path, time_offset=0.0):
             print("❌ Whisper: no model could be loaded")
             return None
 
-        result = model.transcribe(audio_path, word_timestamps=True, language="en")
+        segments, _ = model.transcribe(audio_path, word_timestamps=True, language="en")
 
         words = []
-        for seg in result.get("segments", []):
-            for wd in seg.get("words", []):
-                words.append({
-                    "word":  wd["word"].strip(),
-                    "start": wd["start"] + time_offset,
-                    "end":   wd["end"]   + time_offset,
-                })
+        for seg in segments:
+            if seg.words:
+                for wd in seg.words:
+                    words.append({
+                        "word":  wd.word.strip(),
+                        "start": wd.start + time_offset,
+                        "end":   wd.end   + time_offset,
+                    })
         print(f"✅ Whisper: {len(words)} words timestamped (offset +{time_offset:.1f}s)")
         return words
     except Exception as e:
