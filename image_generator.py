@@ -459,12 +459,88 @@ def generate_all_images(script_data, output_dir="images", clips_dir="clips"):
     }
 
     print(f"\n🎨 Generating visuals for {len(beats)} beats  |  Style: {vis_style}")
-    print(f"🎬 All beats → video clips only (Pexels / Pixabay)")
+    print(f"🎬 Beat visuals: Wikimedia photo > Pexels clip > Pixabay clip")
 
     generated_visuals = []
 
     # Reset per-run keyword tracking
     _used_keywords.clear()
+    _used_wikimedia_urls: set = set()    # avoid same image twice across beats
+
+    # ── Wikimedia Commons fetcher (public domain, story-relevant) ────────
+    _WIKI_SKIP_WORDS = ("logo", "map", "flag", "icon", "seal", "coat", "symbol",
+                        "diagram", "chart", "graph", "signature", "stamp")
+    _WIKI_PHOTO_EXTS = (".jpg", ".jpeg", ".png")
+    _WIKI_FILLER     = {"the","a","an","of","in","to","is","was","were","be",
+                        "dark","shocking","secret","truth","exposed","revealed",
+                        "hidden","real","blood","money","never","told","untold",
+                        "what","how","why","who","this","and","or","but","s",
+                        "most","ever","you","your","they","their","his","her"}
+
+    def _fetch_wikimedia(keywords, beat_num):
+        """
+        Search Wikimedia Commons for a story-contextual public-domain photo.
+        Returns saved image path or None.
+        """
+        try:
+            # Clean keywords same way as hook background
+            clean = []
+            for w in keywords.split():
+                wl = w.strip(".,!?\"'").lower()
+                if wl and wl not in _WIKI_FILLER and len(wl) > 2:
+                    clean.append(wl.capitalize())
+            query = " ".join(clean[:5]) if clean else keywords[:40]
+
+            search = requests.get(
+                "https://commons.wikimedia.org/w/api.php",
+                params={"action":"query","list":"search","srsearch":query,
+                        "srnamespace":6,"srlimit":15,"format":"json"},
+                timeout=8, headers={"User-Agent":"DarkMindBot/1.0"},
+            )
+            if search.status_code != 200:
+                return None
+
+            results = search.json().get("query",{}).get("search",[])
+            random.shuffle(results)
+
+            for item in results:
+                title = item.get("title","")
+                tl    = title.lower()
+                if not any(tl.endswith(e) for e in _WIKI_PHOTO_EXTS):
+                    continue
+                if any(w in tl for w in _WIKI_SKIP_WORDS):
+                    continue
+
+                info_r = requests.get(
+                    "https://commons.wikimedia.org/w/api.php",
+                    params={"action":"query","titles":title,"prop":"imageinfo",
+                            "iiprop":"url|size","format":"json"},
+                    timeout=8, headers={"User-Agent":"DarkMindBot/1.0"},
+                )
+                if info_r.status_code != 200:
+                    continue
+                for pg in info_r.json().get("query",{}).get("pages",{}).values():
+                    info   = pg.get("imageinfo",[{}])[0]
+                    url    = info.get("url","")
+                    width  = info.get("width",0)
+                    height = info.get("height",0)
+                    if width < 400 or height < 400:
+                        continue
+                    if url in _used_wikimedia_urls:
+                        continue
+                    img_r = requests.get(url, timeout=20,
+                                         headers={"User-Agent":"DarkMindBot/1.0"})
+                    if img_r.status_code == 200 and len(img_r.content) > 20_000:
+                        out = os.path.join(output_dir, f"beat_{beat_num:02d}_wiki.jpg")
+                        with open(out, "wb") as fh:
+                            fh.write(img_r.content)
+                        adaptive_darken(out)
+                        _used_wikimedia_urls.add(url)
+                        print(f"  ✅ Wikimedia photo beat {beat_num}: {title[5:50]}")
+                        return out
+        except Exception as e:
+            print(f"  ⚠️  Wikimedia beat {beat_num}: {e.__class__.__name__}")
+        return None
 
     STOCK_BLOCKLIST = {
         "psychological", "psychology", "abstract", "invisible", "concept",
@@ -535,34 +611,44 @@ def generate_all_images(script_data, output_dir="images", clips_dir="clips"):
                 variation_idx += 1
             _used_keywords.add(video_kws)
 
-        # All beats → video clips only
-        print(f"\n🎬 Beat {beat_num}: VIDEO CLIP — {(video_kws or image_prompt)[:50]}")
+        print(f"\n🎬 Beat {beat_num}: {(video_kws or image_prompt)[:55]}")
 
         result      = None
         result_type = None
 
-        if video_kws:
+        # Tier 1: Wikimedia Commons — real public-domain photo of the story topic
+        # Use the raw (unsanitized) keywords so proper names (Tesla, Disney) are kept
+        raw_kws = beat_data.get("video_keywords", "") or image_prompt
+        if raw_kws:
+            result = _fetch_wikimedia(raw_kws, beat_num)
+            if result:
+                result_type = "image"
+
+        # Tier 2: Pexels video clip
+        if not result and video_kws:
             result = fetch_pexels_video(video_kws, beat_num, clips_dir)
             if result:
                 result_type = "clip"
-            if not result:
-                result = fetch_pixabay_video(video_kws, beat_num, clips_dir)
-                if result:
-                    result_type = "clip"
 
+        # Tier 3: Pixabay video clip
+        if not result and video_kws:
+            result = fetch_pixabay_video(video_kws, beat_num, clips_dir)
+            if result:
+                result_type = "clip"
+
+        # Tier 4: gaming clip — safe background for any topic
         if not result:
-            print(f"  ⚠️  No topic clip — trying gaming footage for beat {beat_num}")
+            print(f"  ⚠️  No topic visual — trying gaming footage for beat {beat_num}")
             result = fetch_gaming_clip(beat_num, clips_dir)
             if result:
                 result_type = "clip"
 
+        # Tier 5: Pexels/Pixabay stock photo
         if not result:
-            print(f"  ⚠️  No clip at all — falling back to stock photo for beat {beat_num}")
-            img = get_pexels_fallback(image_prompt, beat_num, output_dir)
-            if not img:
-                img = get_pixabay_fallback(image_prompt, beat_num, output_dir)
-            if img:
-                result      = img
+            result = get_pexels_fallback(image_prompt, beat_num, output_dir)
+            if not result:
+                result = get_pixabay_fallback(image_prompt, beat_num, output_dir)
+            if result:
                 result_type = "image"
 
         if result and result_type:
