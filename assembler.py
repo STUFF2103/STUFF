@@ -177,8 +177,27 @@ def calculate_beat_durations(visuals, script_data, total_duration):
         uniform = total_duration / max(len(visuals), 1)
         return [uniform] * len(visuals)
 
-    scale = total_duration / sum(raw)
-    return [r * scale for r in raw]
+    scale     = total_duration / sum(raw)
+    durations = [r * scale for r in raw]
+
+    # Cap image beats at 3s — photos shouldn't linger, clips fill the gap
+    IMAGE_MAX   = 3.0
+    excess      = 0.0
+    clip_idxs   = []
+    for i, vis in enumerate(visuals):
+        if vis.get("type") == "image" and durations[i] > IMAGE_MAX:
+            excess       += durations[i] - IMAGE_MAX
+            durations[i]  = IMAGE_MAX
+        elif vis.get("type") == "clip":
+            clip_idxs.append(i)
+
+    # Redistribute capped time to clip beats so total stays the same
+    if excess > 0.01 and clip_idxs:
+        bonus = excess / len(clip_idxs)
+        for i in clip_idxs:
+            durations[i] += bonus
+
+    return durations
 
 
 def get_beat_camera_motion(vis, script_data):
